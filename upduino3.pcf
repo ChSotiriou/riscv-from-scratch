@@ -1,0 +1,6 @@
+set_io --warn-no-port clk_12M 20
+set_io --warn-no-port rst 21
+
+set_io --warn-no-port led_green 39
+set_io --warn-no-port led_blue 40
+set_io --warn-no-port led_red 41
