@@ -3,31 +3,50 @@
 module SOC (
     input clk_12M,
     input rst,
-    output led_green,
-    output led_red,
-    output led_blue
+    output [2:0] leds
 );
 
+    reg [2:0] MEM [0:20];
+    initial begin
+        MEM[0] = 3'b000;
+        MEM[1] = 3'b001;
+        MEM[2] = 3'b010;
+        MEM[3] = 3'b000;
+        MEM[4] = 3'b001;
+        MEM[5] = 3'b010;
+        MEM[6] = 3'b000;
+        MEM[7] = 3'b001;
+        MEM[8] = 3'b010;
+        MEM[9] = 3'b000;
+        MEM[10] = 3'b001;
+        MEM[11] = 3'b010;
+        MEM[12] = 3'b000;
+        MEM[13] = 3'b001;
+        MEM[14] = 3'b010;
+        MEM[15] = 3'b000;
+        MEM[16] = 3'b001;
+        MEM[17] = 3'b010;
+        MEM[18] = 3'b000;
+        MEM[19] = 3'b001;
+        MEM[20] = 3'b010;
+    end
+
+    reg [4:0] PC = 0;
     wire clk;
     wire rst_n;
 
-    reg [3:0] count = 0;
-    always @(posedge clk)
-    begin
-        count <= count + 1;
-    end
-
-    assign led_green = count[0];
-    assign led_red = count[1];
-    assign led_blue = count[2];
-
     Clockworks #(
-        .SLOW(18)
+        .SLOW(23)
     ) CW (
         .CLK(clk_12M),
         .RESET(rst),
         .clk(clk),
         .rst_n(rst_n)
     );
-    
+
+    always @(posedge clk) begin
+        leds <= MEM[PC];
+        PC = (PC == 20) ? 0 : PC + 1;
+    end
+
 endmodule
