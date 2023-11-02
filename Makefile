@@ -24,7 +24,7 @@ all: ${PROJ}.bin
 	esac
 
 prog:
-	iceprog ${PROJ}.bin
+	sudo /home/user/oss-cad-suite/libexec/iceprog ${PROJ}.bin
 
 clean:
 	rm -f ${PROJ}.json ${PROJ}.asc ${PROJ}.bin
