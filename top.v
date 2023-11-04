@@ -10,20 +10,19 @@ module SOC (
     reg [31:0] PC;
 
     `include "riscv_assembly.v"
-    integer L0_=4;
+    integer L0_ = 8;
+    integer L1_ = 16;
     initial begin
         PC = 0;
-        ADDI(x1, x0, 1);
+        ADD(x1, x0, x0);
+        ADDI(x2, x0, 10);
     Label(L0_);
-        SLLI(x1, x1, 1);
-        SLLI(x1, x1, 1);
-        SLLI(x1, x1, 1);
-        SLLI(x1, x1, 1);
-        SRLI(x1, x1, 1);
-        SRLI(x1, x1, 1);
-        SRLI(x1, x1, 1);
-        SRLI(x1, x1, 1);
+        ADDI(x1, x1, 1);
+        BLT(x1, x2, LabelRef(L0_));
+
+        ADD(x1, x0, x0);
         JAL(x0, LabelRef(L0_));
+
         EBREAK();
         endASM();
     end	   
@@ -41,7 +40,9 @@ module SOC (
     end
 `endif   
 
-    // instruction decoder
+    //////////////////////////////////////////////////////////////
+    // Instruction Decoder
+    //////////////////////////////////////////////////////////////
     reg [31:0] instr = 0;
 
     // Decode Instruction Type
@@ -79,8 +80,9 @@ module SOC (
     localparam FETCH_REGS = 1;
     localparam EXECUTE = 2;
     reg [1:0] state = FETCH_INSTR;
-    wire [31:0] nextPC =    isJAL   ? PC + Jimm :
-                            isJALR  ? PC + Iimm :
+    wire [31:0] nextPC =    isJAL                   ? PC + Jimm :
+                            isJALR                  ? PC + Iimm :
+                            isBranch && takeBranch  ? PC + Bimm : 
                             PC + 4;
 
     always @(posedge clk) begin
@@ -179,6 +181,22 @@ module SOC (
         end
     end
 `endif
+
+    //////////////////////////////////////////////////////////////
+    // Branch
+    //////////////////////////////////////////////////////////////
+    reg takeBranch;
+    always @(*) begin
+        case (funct3) 
+        3'b000: takeBranch = (rs1 == rs2);
+        3'b001: takeBranch = (rs1 != rs2);
+        3'b100: takeBranch = ($signed(rs1) < $signed(rs2));
+        3'b101: takeBranch = ($signed(rs1) >= $signed(rs2)); 
+        3'b110: takeBranch = (rs1 < rs2); 
+        3'b111: takeBranch = (rs1 >= rs2); 
+        default: takeBranch = 1'b1;
+        endcase
+    end
 
     wire clk;
     wire rst_n;
