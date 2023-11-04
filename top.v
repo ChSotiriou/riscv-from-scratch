@@ -5,38 +5,21 @@ module SOC (
     input rst,
     output [4:0] leds
 );
-    reg [31:0] MEM [0:7];
+    reg [31:0] MEM [0:255];
+    reg [31:0] PC;
+
+    `include "riscv_assembly.v"
     initial begin
-        // add x1, x0, x0
-        //                    rs2   rs1  add  rd  ALUREG
-        MEM[0] = 32'b0000000_00000_00000_000_00001_0110011;
-
-        // addi x1, x1, 1
-        //             imm         rs1  add  rd   ALUIMM
-        MEM[1] = 32'b000000000001_00001_000_00001_0010011;
-        
-        // add x1, x0, x0
-        //                    rs2   rs1  add  rd  ALUREG
-        MEM[2] = 32'b0000000_00001_00001_000_00010_0110011;
-
-        // lw x2,0(x1)
-        //             imm         rs1   w   rd   LOAD
-        MEM[3] = 32'b000000000000_00001_010_00010_0000011;
-
-        // addi x1, x1, 1
-        //             imm         rs1  add  rd   ALUIMM
-        MEM[4] = 32'b000000000001_00001_000_00001_0010011;
-
-
-        // lw x2,0(x1)
-        //             imm         rs1   w   rd   LOAD
-        MEM[5] = 32'b000000000000_00001_010_00010_0000011;
-        // sw x2,0(x1)
-        //             imm   rs2   rs1   w   imm  STORE
-        MEM[6] = 32'b000000_00001_00010_010_00000_0100011;
-        // ebreak
-        //                                        SYSTEM
-        MEM[7] = 32'b000000000001_00000_000_00000_1110011;
+        PC = 0;
+        ADD(x1, x0, x0);
+        ADDI(x1, x1, 1);
+        ADD(x1, x1, x1);
+        ADDI(x1, x1, 5);
+        SLLI(x1, x1, 1);
+        SLLI(x1, x1, 1);
+        SRLI(x1, x1, 1);
+        SRLI(x1, x1, 1);
+        EBREAK();
     end	   
 
     reg [31:0] RegisterBank [0:31];
@@ -86,7 +69,6 @@ module SOC (
     //////////////////////////////////////////////////////////////
     // State Machine
     //////////////////////////////////////////////////////////////
-    reg [4:0] PC = 0;
     localparam FETCH_INSTR = 0;
     localparam FETCH_REGS = 1;
     localparam EXECUTE = 2;
@@ -95,8 +77,12 @@ module SOC (
     always @(posedge clk) begin
         case (state)
             FETCH_INSTR: begin
-                instr <= MEM[PC];
-                state <= FETCH_REGS;
+                if (!rst_n) begin
+                    PC <= 0;
+                end else begin
+                    instr <= MEM[PC];
+                    state <= FETCH_REGS;
+                end
             end
             FETCH_REGS: begin
                 rs1 <= RegisterBank[rs1Id];
@@ -120,14 +106,6 @@ module SOC (
             $display("x%0d <= 0x%0x",rdId,writeBackData);
 `endif	 
             RegisterBank[rdId] <= writeBackData;
-        end
-    end
-
-    // synchronous reset
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            PC <= 0;
-            state <= FETCH_INSTR;
         end
     end
 
@@ -185,7 +163,7 @@ module SOC (
             3'b010: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
             3'b011: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
             3'b100: $display("0x%0x ^ 1x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            3'b101: $display("ALU Shift Left");
+            3'b101: $display("ALU Shift Right");
             3'b110: $display("0x%0x | 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
             3'b111: $display("0x%0x & 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
             endcase
@@ -202,7 +180,7 @@ module SOC (
     `ifdef BENCH
             .SLOW(1)
     `else
-            .SLOW(21)
+            .SLOW(20)
     `endif
         ) CW (
             .CLK(clk_12M),
@@ -211,8 +189,6 @@ module SOC (
             .rst_n(rst_n)
         );
 
-
-
-    assign leds = isSYSTEM ? 31 : {PC[0], PC[1], state, 1'b0};
+    assign leds = RegisterBank[1][5:0];
 
 endmodule

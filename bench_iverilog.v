@@ -15,7 +15,7 @@ module bench();
       forever begin
 	 #1 CLK = ~CLK;
 	 if(LEDS != prev_LEDS) begin
-	   //  $display("LEDS = %b",LEDS);
+	    $display("LEDS = %b",LEDS);
 	 end
 	 prev_LEDS <= LEDS;
       end
