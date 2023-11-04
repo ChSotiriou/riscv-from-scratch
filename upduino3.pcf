@@ -1,8 +1,10 @@
-set_io --warn-no-port clk_12M 20
-set_io --warn-no-port rst 11
+set_io --warn-no-port CLK_12M 20
+set_io --warn-no-port RESET 11
 
-set_io --warn-no-port leds[0] 2
-set_io --warn-no-port leds[1] 3
-set_io --warn-no-port leds[2] 4
-set_io --warn-no-port leds[3] 6
-set_io --warn-no-port leds[4] 9
+set_io --warn-no-port LEDS[0] 2
+set_io --warn-no-port LEDS[1] 3
+set_io --warn-no-port LEDS[2] 4
+set_io --warn-no-port LEDS[3] 6
+set_io --warn-no-port LEDS[4] 9
+
+set_io --warn-no-port STATUS 10

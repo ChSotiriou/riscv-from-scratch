@@ -1,25 +1,31 @@
 `include "clockworks.v"
 
 module SOC (
-    input clk_12M,
-    input rst,
-    output [4:0] leds
+    input CLK_12M,
+    input RESET,
+    output [4:0] LEDS,
+    output STATUS
 );
     reg [31:0] MEM [0:255];
     reg [31:0] PC;
 
     `include "riscv_assembly.v"
+    integer L0_=4;
     initial begin
         PC = 0;
-        ADD(x1, x0, x0);
-        ADDI(x1, x1, 1);
-        ADD(x1, x1, x1);
-        ADDI(x1, x1, 5);
+        ADDI(x1, x0, 1);
+    Label(L0_);
+        SLLI(x1, x1, 1);
+        SLLI(x1, x1, 1);
         SLLI(x1, x1, 1);
         SLLI(x1, x1, 1);
         SRLI(x1, x1, 1);
         SRLI(x1, x1, 1);
+        SRLI(x1, x1, 1);
+        SRLI(x1, x1, 1);
+        JAL(x0, LabelRef(L0_));
         EBREAK();
+        endASM();
     end	   
 
     reg [31:0] RegisterBank [0:31];
@@ -73,6 +79,9 @@ module SOC (
     localparam FETCH_REGS = 1;
     localparam EXECUTE = 2;
     reg [1:0] state = FETCH_INSTR;
+    wire [31:0] nextPC =    isJAL   ? PC + Jimm :
+                            isJALR  ? PC + Iimm :
+                            PC + 4;
 
     always @(posedge clk) begin
         case (state)
@@ -80,7 +89,7 @@ module SOC (
                 if (!rst_n) begin
                     PC <= 0;
                 end else begin
-                    instr <= MEM[PC];
+                    instr <= MEM[PC[31:2]];
                     state <= FETCH_REGS;
                 end
             end
@@ -91,7 +100,7 @@ module SOC (
             end
             EXECUTE: begin
                 if (!isSYSTEM) begin
-                    PC <= PC + 1;
+                    PC <= nextPC;
                 end
                 state <= FETCH_INSTR;
             end
@@ -151,8 +160,8 @@ module SOC (
         endcase
     end
 
-    assign writeBackData = aluOut;
-    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg));
+    assign writeBackData = (isJAL || isJALR) ? (PC + 4) : aluOut;
+    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR));
 
 `ifdef BENCH
     always @(posedge clk) begin
@@ -171,24 +180,23 @@ module SOC (
     end
 `endif
 
-
-
     wire clk;
     wire rst_n;
 
         Clockworks #(
     `ifdef BENCH
-            .SLOW(1)
+            .SLOW(14)
     `else
-            .SLOW(20)
+            .SLOW(19)
     `endif
         ) CW (
-            .CLK(clk_12M),
-            .RESET(rst),
+            .CLK(CLK_12M),
+            .RESET(RESET),
             .clk(clk),
             .rst_n(rst_n)
         );
 
-    assign leds = RegisterBank[1][5:0];
+    assign LEDS = RegisterBank[1][5:0];
+    assign STATUS = (state == FETCH_INSTR || isSYSTEM);
 
 endmodule

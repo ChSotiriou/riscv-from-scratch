@@ -2,11 +2,13 @@ module bench();
    reg CLK;
    wire RESET = 1; 
    wire [4:0] LEDS;
+   wire status;
 
    SOC uut(
-     .clk_12M(CLK),
-     .rst(RESET),
-     .leds(LEDS)
+     .CLK_12M(CLK),
+     .RESET(RESET),
+     .LEDS(LEDS),
+     .STATUS(status)
    );
 
    reg[4:0] prev_LEDS = 0;
