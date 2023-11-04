@@ -5,38 +5,6 @@ module SOC (
     input rst,
     output [4:0] leds
 );
-
-    reg [31:0] instr = 0;
-
-    // Decode Instruction Type
-    wire isALUreg   =   (instr[6:0] == 7'b0110011);
-    wire isALUimm   =   (instr[6:0] == 7'b0010011);
-    wire isBranch   =   (instr[6:0] == 7'b1100011);
-    wire isJALR     =   (instr[6:0] == 7'b1100111);
-    wire isJAL      =   (instr[6:0] == 7'b1101111);
-    wire isAUIPC    =   (instr[6:0] == 7'b0010111);
-    wire isLUI      =   (instr[6:0] == 7'b0110111);
-    wire isLoad     =   (instr[6:0] == 7'b0000011);
-    wire isStore    =   (instr[6:0] == 7'b0100011);
-    wire isSYSTEM   =   (instr[6:0] == 7'b1110011);
-
-    // Function Codes
-    wire [2:0] funct3   =   instr[14:12];
-    wire [6:0] funct7   =   instr[31:25];
-
-    // R-Type Instructions
-    wire [4:0] rs1  =   instr[19:15];
-    wire [4:0] rs2  =   instr[24:20];
-    wire [4:0] rd   =   instr[11:7];
-    
-    // Immediate Values
-    wire [31:0] Iimm    =   { {21{instr[31]}} , instr[30:20] }; // I-Type
-    wire [31:0] Simm    =   { {21{instr[31]}} , instr[30:25] , instr[11:7]}; // S-Type
-    wire [31:0] Bimm    =   { {20{instr[31]}} , instr[7], instr[30:25] , instr[11:8], 1'b0}; // B-Type
-    wire [31:0] Uimm    =   { instr[31:12] , 12'b0}; // U-Type
-    wire [31:0] Jimm    =   { {12{instr[31]}} , instr[19:12] , instr[20] , instr[30:21] , 1'b0}; // J-Type
-
-
     reg [31:0] MEM [0:7];
     initial begin
         // add x1, x0, x0
@@ -71,6 +39,44 @@ module SOC (
         MEM[7] = 32'b000000000001_00000_000_00000_1110011;
     end	   
 
+    reg [31:0] RegisterBank [0:31];
+    reg [31:0] rs1;
+    reg [31:0] rs2;
+
+    // instruction decoder
+    reg [31:0] instr = 0;
+
+    // Decode Instruction Type
+    wire isALUreg   =   (instr[6:0] == 7'b0110011);
+    wire isALUimm   =   (instr[6:0] == 7'b0010011);
+    wire isBranch   =   (instr[6:0] == 7'b1100011);
+    wire isJALR     =   (instr[6:0] == 7'b1100111);
+    wire isJAL      =   (instr[6:0] == 7'b1101111);
+    wire isAUIPC    =   (instr[6:0] == 7'b0010111);
+    wire isLUI      =   (instr[6:0] == 7'b0110111);
+    wire isLoad     =   (instr[6:0] == 7'b0000011);
+    wire isStore    =   (instr[6:0] == 7'b0100011);
+    wire isSYSTEM   =   (instr[6:0] == 7'b1110011);
+
+    // Function Codes
+    wire [2:0] funct3   =   instr[14:12];
+    wire [6:0] funct7   =   instr[31:25];
+
+    // R-Type Instructions
+    wire [4:0] rs1Id    =   instr[19:15];
+    wire [4:0] rs2Id    =   instr[24:20];
+    wire [4:0] rdId     =   instr[11:7];
+    
+    // Immediate Values
+    wire [31:0] Iimm    =   { {21{instr[31]}} , instr[30:20] }; // I-Type
+    wire [31:0] Simm    =   { {21{instr[31]}} , instr[30:25] , instr[11:7]}; // S-Type
+    wire [31:0] Bimm    =   { {20{instr[31]}} , instr[7], instr[30:25] , instr[11:8], 1'b0}; // B-Type
+    wire [31:0] Uimm    =   { instr[31:12] , 12'b0}; // U-Type
+    wire [31:0] Jimm    =   { {12{instr[31]}} , instr[19:12] , instr[20] , instr[30:21] , 1'b0}; // J-Type
+
+
+
+
     reg [4:0] PC = 0;
     wire clk;
     wire rst_n;
@@ -84,17 +90,38 @@ module SOC (
         .rst_n(rst_n)
     );
 
+    localparam FETCH_INSTR = 0;
+    localparam FETCH_REGS = 1;
+    localparam EXECUTE = 2;
+    reg [1:0] state = FETCH_INSTR;
+
     always @(posedge clk) begin
-        if (!rst_n) begin
-            PC <= 0;
-            instr <= 0;
-        end else if (!isSYSTEM) begin
-            instr <= MEM[PC];
-            PC <= PC + 1;
+        case (state)
+            FETCH_INSTR: begin
+                instr <= MEM[PC];
+                state <= FETCH_REGS;
+            end
+            FETCH_REGS: begin
+                rs1 <= RegisterBank[rs1Id];
+                rs2 <= RegisterBank[rs2Id];
+                state <= EXECUTE;
+            end
+            EXECUTE: begin
+                PC <= PC + 1;
+                state <= FETCH_INSTR;
+            end
+        endcase
+    end
+
+    wire [31:0] writeBackData = 0;
+    wire writeBackEnable = 0;
+    always @(posedge clk) begin
+        if (writeBackEnable && rdId != 0) begin
+            RegisterBank[rdId] <= writeBackData;
         end
     end
 
-    assign leds = isSYSTEM ? 31 : {PC[0], isALUreg, isALUimm, isStore, isLoad};
+    assign leds = isSYSTEM ? 31 : {PC[0], PC[1], state, 1'b0};
     // assign leds = 5'b10101;
     // assign leds = PC;
 
