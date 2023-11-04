@@ -162,8 +162,11 @@ module SOC (
         endcase
     end
 
-    assign writeBackData = (isJAL || isJALR) ? (PC + 4) : aluOut;
-    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR));
+    assign writeBackData =  (isJAL || isJALR)   ?   (PC + 4) :
+                            isLUI               ?   Uimm :
+                            isAUIPC             ?   PC + Uimm :
+                                                    aluOut;
+    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR || isLUI || isAUIPC));
 
 `ifdef BENCH
     always @(posedge clk) begin
