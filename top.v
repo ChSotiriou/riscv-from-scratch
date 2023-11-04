@@ -17,7 +17,7 @@ module SOC (
         
         // add x1, x0, x0
         //                    rs2   rs1  add  rd  ALUREG
-        MEM[2] = 32'b0000000_00000_00000_000_00001_0110011;
+        MEM[2] = 32'b0000000_00001_00001_000_00010_0110011;
 
         // lw x2,0(x1)
         //             imm         rs1   w   rd   LOAD
@@ -42,6 +42,15 @@ module SOC (
     reg [31:0] RegisterBank [0:31];
     reg [31:0] rs1;
     reg [31:0] rs2;
+
+`ifdef BENCH   
+    integer i;
+    initial begin
+        for(i=0; i<32; ++i) begin
+            RegisterBank[i] = 0;
+        end
+    end
+`endif   
 
     // instruction decoder
     reg [31:0] instr = 0;
@@ -103,10 +112,13 @@ module SOC (
         endcase
     end
 
-    wire [31:0] writeBackData = 0;
-    wire writeBackEnable = 0;
+    wire [31:0] writeBackData;
+    wire writeBackEnable;
     always @(posedge clk) begin
         if (writeBackEnable && rdId != 0) begin
+`ifdef BENCH	 
+            $display("x%0d <= 0x%0x",rdId,writeBackData);
+`endif	 
             RegisterBank[rdId] <= writeBackData;
         end
     end
@@ -163,6 +175,25 @@ module SOC (
 
     assign writeBackData = aluOut;
     assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg));
+
+`ifdef BENCH
+    always @(posedge clk) begin
+        if (state == EXECUTE && (isALUimm || isALUreg)) begin
+            case (funct3)
+            3'b000: $display("0x%0x %s 0x%0x = 0x%0x", aluIn1, (funct7[5] & isALUreg) ? "-":"+", aluIn2, aluOut);
+            3'b001: $display("0x%0x << 0x%0x = 0x%0x", aluIn1, shamt, aluOut);
+            3'b010: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+            3'b011: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+            3'b100: $display("0x%0x ^ 1x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+            3'b101: $display("ALU Shift Left");
+            3'b110: $display("0x%0x | 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+            3'b111: $display("0x%0x & 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+            endcase
+        end
+    end
+`endif
+
+
 
     wire clk;
     wire rst_n;
