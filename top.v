@@ -74,22 +74,10 @@ module SOC (
     wire [31:0] Uimm    =   { instr[31:12] , 12'b0}; // U-Type
     wire [31:0] Jimm    =   { {12{instr[31]}} , instr[19:12] , instr[20] , instr[30:21] , 1'b0}; // J-Type
 
-
-
-
+    //////////////////////////////////////////////////////////////
+    // State Machine
+    //////////////////////////////////////////////////////////////
     reg [4:0] PC = 0;
-    wire clk;
-    wire rst_n;
-
-    Clockworks #(
-        .SLOW(22)
-    ) CW (
-        .CLK(clk_12M),
-        .RESET(rst),
-        .clk(clk),
-        .rst_n(rst_n)
-    );
-
     localparam FETCH_INSTR = 0;
     localparam FETCH_REGS = 1;
     localparam EXECUTE = 2;
@@ -107,7 +95,9 @@ module SOC (
                 state <= EXECUTE;
             end
             EXECUTE: begin
-                PC <= PC + 1;
+                if (!isSYSTEM) begin
+                    PC <= PC + 1;
+                end
                 state <= FETCH_INSTR;
             end
         endcase
@@ -121,8 +111,77 @@ module SOC (
         end
     end
 
+    // synchronous reset
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            PC <= 0;
+            state <= FETCH_INSTR;
+        end
+    end
+
+`ifdef BENCH
+    always @(posedge clk ) begin
+        if (state == FETCH_INSTR) begin
+            case (1'b1)
+            isALUreg : $display("ALUreg rd=x%0d rs1=x%0d rs2=x%0d funct3=%b", rdId, rs1Id, rs2Id, funct3);
+            isALUimm : $display("ALUimm rd=x%0d rs1=x%0d imm=0x%0x funct3=%b", rdId, rs1Id, Iimm, funct3);
+            isBranch : $display("BRANCH");
+            isJALR   : $display("JALR");
+            isJAL    : $display("JAL");
+            isAUIPC  : $display("ALUAUIPC");
+            isLUI    : $display("LUI");
+            isLoad   : $display("LOAD");
+            isStore  : $display("STORE");
+            isSYSTEM : begin 
+                $display("SYSTEM");
+                $finish();
+            end
+            endcase
+        end
+    end
+`endif
+
+    //////////////////////////////////////////////////////////////
+    // ALU
+    //////////////////////////////////////////////////////////////
+    wire [31:0] aluIn1 = rs1;
+    wire [31:0] aluIn2 = isALUreg ? rs2 : Iimm;
+    reg [31:0] aluOut;
+    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20];
+    always @(*) begin
+        case (funct3)
+        3'b000: aluOut = (funct7[5] & isALUreg) ? (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
+        3'b001: aluOut = (aluIn1 << shamt);
+        3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2)); 
+        3'b011: aluOut = (aluIn1 < aluIn2);
+        3'b100: aluOut = (aluIn1 ^ aluIn2);
+        3'b101: aluOut = funct7[5] ? ($signed(aluIn1) >>> shamt) : (aluIn1 >> shamt); 
+        3'b110: aluOut = (aluIn1 | aluIn2); 
+        3'b111: aluOut = (aluIn1 & aluIn2);
+        endcase
+    end
+
+    assign writeBackData = aluOut;
+    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg));
+
+    wire clk;
+    wire rst_n;
+
+        Clockworks #(
+    `ifdef BENCH
+            .SLOW(1)
+    `else
+            .SLOW(21)
+    `endif
+        ) CW (
+            .CLK(clk_12M),
+            .RESET(rst),
+            .clk(clk),
+            .rst_n(rst_n)
+        );
+
+
+
     assign leds = isSYSTEM ? 31 : {PC[0], PC[1], state, 1'b0};
-    // assign leds = 5'b10101;
-    // assign leds = PC;
 
 endmodule

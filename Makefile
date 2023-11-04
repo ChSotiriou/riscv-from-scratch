@@ -26,6 +26,10 @@ all: ${PROJ}.bin
 prog:
 	sudo /home/user/oss-cad-suite/libexec/iceprog ${PROJ}.bin -X
 
+sim:
+	iverilog -DBENCH -DBOARD_FREQ=10 -o build/sim bench_iverilog.v top.v
+	vvp build/sim
+
 clean:
 	rm -f ${PROJ}.json ${PROJ}.asc ${PROJ}.bin
-.PHONY: all clean prog
+.PHONY: all clean prog sim
