@@ -6,7 +6,7 @@ PROJ = riscv_from_scratch
 FPGA_PKG = sg48
 FPGA_TYPE = up5k
 PCF = upduino3.pcf
-ADD_SRC =
+ADD_SRC = processor.v memory.v clockworks.v
 TOP = top.v
 
 all: ${PROJ}.bin
