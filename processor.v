@@ -4,7 +4,7 @@ module Processor (
     output      [31:0]  mem_addr,
     input       [31:0]  mem_rdata,
     output              mem_rstrb,
-    output      [31:0]  x1,         // used for the LEDS for debugging
+    output      [31:0]  debug,      // used for the LEDS for debugging
     output              status      // used for the STATUS LED for debugging
 );
     reg [31:0] PC = 0;
@@ -63,7 +63,7 @@ module Processor (
     localparam EXECUTE = 3;
     reg [1:0] state = FETCH_INSTR;
     wire [31:0] nextPC =    isJAL                   ? PC + Jimm :
-                            isJALR                  ? PC + Iimm :
+                            isJALR                  ? rs1 + Iimm :
                             isBranch && takeBranch  ? PC + Bimm : 
                             PC + 4;
 
@@ -150,7 +150,7 @@ module Processor (
     wire LTU = aluMinus[32];
     wire LT = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
 
-    wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(aluin1) : aluIn1;
+    wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(aluIn1) : aluIn1;
     wire [31:0] shifter = $signed({instr[30] & aluIn1[31], shifter_in} >>> aluIn2[4:0]);
     wire [31:0] leftshift = flip32(shifter);
 
@@ -206,6 +206,6 @@ module Processor (
         endcase
     end
 
-    assign x1 = RegisterBank[1];
+    assign debug = RegisterBank[2];
     assign status = (state == FETCH_INSTR || isSYSTEM);
 endmodule
