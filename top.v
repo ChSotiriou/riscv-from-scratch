@@ -15,7 +15,7 @@ module SOC (
     wire mem_rstrb;
     wire [31:0] mem_rdata;
 
-    wire [31:0] x1;
+    wire [31:0] debug;
 
     Memory RAM (
         .clk(clk),
@@ -30,24 +30,18 @@ module SOC (
         .mem_addr(mem_addr),
         .mem_rdata(mem_rdata),
         .mem_rstrb(mem_rstrb),
-        .x1(x1),
+        .debug(debug),
         .status(STATUS)
     );
 
 
-    Clockworks #(
-`ifdef BENCH
-        .SLOW(14)
-`else
-        .SLOW(18)
-`endif
-    ) CW (
+    Clockworks CW (
         .CLK(CLK_12M),
         .RESET(RESET),
         .clk(clk),
         .rst_n(rst_n)
     );
 
-    assign LEDS = x1[4:0];
+    assign LEDS = debug[4:0];
 
 endmodule
