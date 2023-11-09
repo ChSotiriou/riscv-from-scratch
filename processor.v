@@ -102,32 +102,32 @@ module Processor (
     always @(posedge clk) begin
         if (writeBackEnable && rdId != 0) begin
 `ifdef BENCH	 
-            $display("x%0d <= 0x%0x",rdId,writeBackData);
+            // $display("x%0d <= 0x%0x",rdId,writeBackData);
 `endif	 
             RegisterBank[rdId] <= writeBackData;
         end
     end
 
 `ifdef BENCH
-    always @(posedge clk ) begin
-        if (state == FETCH_INSTR) begin
-            case (1'b1)
-            isALUreg : $display("ALUreg rd=x%0d rs1=x%0d rs2=x%0d funct3=%b", rdId, rs1Id, rs2Id, funct3);
-            isALUimm : $display("ALUimm rd=x%0d rs1=x%0d imm=0x%0x funct3=%b", rdId, rs1Id, Iimm, funct3);
-            isBranch : $display("BRANCH");
-            isJALR   : $display("JALR");
-            isJAL    : $display("JAL");
-            isAUIPC  : $display("ALUAUIPC");
-            isLUI    : $display("LUI");
-            isLoad   : $display("LOAD");
-            isStore  : $display("STORE");
-            isSYSTEM : begin 
-                $display("SYSTEM");
-                $finish();
-            end
-            endcase
-        end
-    end
+    // always @(posedge clk ) begin
+    //     if (state == fetch_instr) begin
+    //         case (1'b1)
+    //         isalureg : $display("alureg rd=x%0d rs1=x%0d rs2=x%0d funct3=%b", rdid, rs1id, rs2id, funct3);
+    //         isaluimm : $display("aluimm rd=x%0d rs1=x%0d imm=0x%0x funct3=%b", rdid, rs1id, iimm, funct3);
+    //         isbranch : $display("branch");
+    //         isjalr   : $display("jalr");
+    //         isjal    : $display("jal");
+    //         isauipc  : $display("aluauipc");
+    //         islui    : $display("lui");
+    //         isload   : $display("load");
+    //         isstore  : $display("store");
+    //         issystem : begin 
+    //             $display("system");
+    //             $finish();
+    //         end
+    //         endcase
+    //     end
+    // end
 `endif
 
     //////////////////////////////////////////////////////////////
@@ -174,20 +174,20 @@ module Processor (
     assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR || isLUI || isAUIPC));
 
 `ifdef BENCH
-    always @(posedge clk) begin
-        if (state == EXECUTE && (isALUimm || isALUreg)) begin
-            case (funct3)
-            3'b000: $display("0x%0x %s 0x%0x = 0x%0x", aluIn1, (funct7[5] & isALUreg) ? "-":"+", aluIn2, aluOut);
-            3'b001: $display("0x%0x << 0x%0x = 0x%0x", aluIn1, shamt, aluOut);
-            3'b010: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            3'b011: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            3'b100: $display("0x%0x ^ 1x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            3'b101: $display("ALU Shift Right");
-            3'b110: $display("0x%0x | 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            3'b111: $display("0x%0x & 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
-            endcase
-        end
-    end
+    // always @(posedge clk) begin
+    //     if (state == EXECUTE && (isALUimm || isALUreg)) begin
+    //         case (funct3)
+    //         3'b000: $display("0x%0x %s 0x%0x = 0x%0x", aluIn1, (funct7[5] & isALUreg) ? "-":"+", aluIn2, aluOut);
+    //         3'b001: $display("0x%0x << 0x%0x = 0x%0x", aluIn1, shamt, aluOut);
+    //         3'b010: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+    //         3'b011: $display("0x%0x < 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+    //         3'b100: $display("0x%0x ^ 1x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+    //         3'b101: $display("ALU Shift Right");
+    //         3'b110: $display("0x%0x | 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+    //         3'b111: $display("0x%0x & 0x%0x = 0x%0x", aluIn1, aluIn2, aluOut);
+    //         endcase
+    //     end
+    // end
 `endif
 
     //////////////////////////////////////////////////////////////
@@ -206,6 +206,6 @@ module Processor (
         endcase
     end
 
-    assign debug = RegisterBank[2];
+    assign debug = RegisterBank[3];
     assign status = (state == FETCH_INSTR || isSYSTEM);
 endmodule
