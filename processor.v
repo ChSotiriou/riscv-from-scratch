@@ -61,14 +61,16 @@ module Processor (
     localparam WAIT_INSTR = 1;
     localparam FETCH_REGS = 2;
     localparam EXECUTE = 3;
-    reg [1:0] state = FETCH_INSTR;
+    localparam LOAD = 4;
+    localparam WAIT_DATA = 5;
+    reg [2:0] state = FETCH_INSTR;
     wire [31:0] nextPC =    isJAL                   ? PC + Jimm :
                             isJALR                  ? rs1 + Iimm :
                             isBranch && takeBranch  ? PC + Bimm : 
                             PC + 4;
 
-    assign mem_addr = PC;
-    assign mem_rstrb = (state == FETCH_INSTR);
+    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? PC : loadstore_addr;
+    assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
 
     always @(posedge clk) begin
         case (state)
@@ -92,6 +94,12 @@ module Processor (
                 if (!isSYSTEM) begin
                     PC <= nextPC;
                 end
+                state <= isLoad ? LOAD : FETCH_INSTR;
+            end
+            LOAD: begin
+                state <= WAIT_DATA;
+            end
+            WAIT_DATA: begin
                 state <= FETCH_INSTR;
             end
         endcase
@@ -170,8 +178,9 @@ module Processor (
     assign writeBackData =  (isJAL || isJALR)   ?   (PC + 4) :
                             isLUI               ?   Uimm :
                             isAUIPC             ?   PC + Uimm :
+                            isLoad              ?   load_data :
                                                     aluOut;
-    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR || isLUI || isAUIPC));
+    assign writeBackEnable = (state == EXECUTE && (isALUimm || isALUreg || isJAL || isJALR || isLUI || isAUIPC)) || state == WAIT_DATA;
 
 `ifdef BENCH
     // always @(posedge clk) begin
@@ -205,6 +214,23 @@ module Processor (
         default: takeBranch = 1'b1;
         endcase
     end
+
+    //////////////////////////////////////////////////////////////
+    // Load
+    //////////////////////////////////////////////////////////////
+    wire [31:0] loadstore_addr = rs1 + Iimm;
+    wire [15:0] load_halfword = loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+    wire [7:0] load_byte = loadstore_addr[0] ? load_halfword[15:8] : load_halfword[7:0];
+    
+    wire mem_byte_access = (funct3[1:0] == 2'b00);
+    wire mem_halfword_access = (funct3[1:0] == 2'b01);
+
+    wire load_sign = !funct3[2] & (mem_byte_access ? load_byte[7] : load_halfword[15]);
+    
+    wire [31:0] load_data = 
+        mem_byte_access     ?  {{24{load_sign}}, load_byte} :
+        mem_halfword_access ?  {{16{load_sign}}, load_byte} :
+                               mem_rdata;
 
     assign debug = RegisterBank[3];
     assign status = (state == FETCH_INSTR || isSYSTEM);

@@ -9,20 +9,18 @@ module Memory (
 
 `include "riscv_assembly.v"
     integer L0_ = 4;
-    integer F_WAIT_ = 40;
-    integer WAIT_ = 48;
-    integer F_MULT_ = 60;
-    integer MULT_ = 68;
+    integer F_WAIT_ = 28;
+    integer WAIT_ = 36;
+    integer F_MULT_ = 48;
+    integer MULT_ = 56;
     initial begin
-        LI(gp, 1);
+        LI(s0, 0);
     Label(L0_);
-        LI(a0, 15);
-        CALL(LabelRef(F_WAIT_));
+        LB(gp, s0, 400);
+        ADDI(s0, s0, 1);
 
-        MV(a0, gp);
-        LI(a1, 3);
-        CALL(LabelRef(F_MULT_));
-        MV(gp, a0);
+        LI(a0, 18);
+        CALL(LabelRef(F_WAIT_));
 
         J(LabelRef(L0_));
 
@@ -34,17 +32,21 @@ module Memory (
         BNEZ(t0, LabelRef(WAIT_));
         RET();
 
-    Label(F_MULT_);
-        MV(t0, a0);
-        LI(a0, 0);
-    Label(MULT_);
-        ADD(a0, a0, t0);
-        ADDI(a1, a1, -1);
-        BNEZ(a1, LabelRef(MULT_));
-        RET();
+    // Label(F_MULT_);
+    //     MV(t0, a0);
+    //     LI(a0, 0);
+    // Label(MULT_);
+    //     ADD(a0, a0, t0);
+    //     ADDI(a1, a1, -1);
+    //     BNEZ(a1, LabelRef(MULT_));
+    //     RET();
 
-        EBREAK();
         endASM();
+
+        MEM[100] = {8'h4, 8'h3, 8'h2, 8'h1};
+        MEM[101] = {8'h8, 8'h7, 8'h6, 8'h5};
+        MEM[102] = {8'hc, 8'hb, 8'ha, 8'h9};
+        MEM[103] = {8'hff, 8'hf, 8'he, 8'hd};  
     end	   
 
     always @(posedge clk) begin
