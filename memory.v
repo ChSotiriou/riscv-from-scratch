@@ -8,20 +8,21 @@ module Memory (
     reg [31:0] MEM [0:255];
 
 `include "riscv_assembly.v"
-    integer L0_ = 0;
-    integer F_WAIT_ = 36;
-    integer WAIT_ = 44;
+    integer L0_ = 4;
+    integer F_WAIT_ = 40;
+    integer WAIT_ = 48;
+    integer F_MULT_ = 60;
+    integer MULT_ = 68;
     initial begin
-    Label(L0_);
         LI(gp, 1);
-
-        LI(a0, 11);
+    Label(L0_);
+        LI(a0, 15);
         CALL(LabelRef(F_WAIT_));
 
-        LI(gp, 0);
-
-        LI(a0, 17);
-        CALL(LabelRef(F_WAIT_));
+        MV(a0, gp);
+        LI(a1, 3);
+        CALL(LabelRef(F_MULT_));
+        MV(gp, a0);
 
         J(LabelRef(L0_));
 
@@ -31,6 +32,15 @@ module Memory (
     Label(WAIT_);
         ADDI(t0, t0, -1);
         BNEZ(t0, LabelRef(WAIT_));
+        RET();
+
+    Label(F_MULT_);
+        MV(t0, a0);
+        LI(a0, 0);
+    Label(MULT_);
+        ADD(a0, a0, t0);
+        ADDI(a1, a1, -1);
+        BNEZ(a1, LabelRef(MULT_));
         RET();
 
         EBREAK();
