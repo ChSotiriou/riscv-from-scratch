@@ -14,6 +14,8 @@ module SOC (
     wire [31:0] mem_addr;
     wire mem_rstrb;
     wire [31:0] mem_rdata;
+    wire [31:0] mem_wdata;
+    wire [3:0] mem_wmask;
 
     wire [31:0] debug;
 
@@ -21,7 +23,9 @@ module SOC (
         .clk(clk),
         .mem_addr(mem_addr),
         .mem_rstrb(mem_rstrb),
-        .mem_rdata(mem_rdata)
+        .mem_rdata(mem_rdata),
+        .mem_wdata(mem_wdata),
+        .mem_wmask(mem_wmask)
     );
 
     Processor CPU (
@@ -30,6 +34,8 @@ module SOC (
         .mem_addr(mem_addr),
         .mem_rdata(mem_rdata),
         .mem_rstrb(mem_rstrb),
+        .mem_wdata(mem_wdata),
+        .mem_wmask(mem_wmask),
         .debug(debug),
         .status(STATUS)
     );

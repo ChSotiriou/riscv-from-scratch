@@ -4,6 +4,8 @@ module Processor (
     output      [31:0]  mem_addr,
     input       [31:0]  mem_rdata,
     output              mem_rstrb,
+    output      [31:0]  mem_wdata,
+    output      [3:0]   mem_wmask,
     output      [31:0]  debug,      // used for the LEDS for debugging
     output              status      // used for the STATUS LED for debugging
 );
@@ -63,6 +65,7 @@ module Processor (
     localparam EXECUTE = 3;
     localparam LOAD = 4;
     localparam WAIT_DATA = 5;
+    localparam STORE = 6;
     reg [2:0] state = FETCH_INSTR;
     wire [31:0] nextPC =    isJAL                   ? PC + Jimm :
                             isJALR                  ? rs1 + Iimm :
@@ -71,6 +74,7 @@ module Processor (
 
     assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? PC : loadstore_addr;
     assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
+    assign mem_wmask = ({4{state == STORE}} & store_wmask);
 
     always @(posedge clk) begin
         case (state)
@@ -94,12 +98,15 @@ module Processor (
                 if (!isSYSTEM) begin
                     PC <= nextPC;
                 end
-                state <= isLoad ? LOAD : FETCH_INSTR;
+                state <= isLoad ? LOAD : (isStore ? STORE : FETCH_INSTR);
             end
             LOAD: begin
                 state <= WAIT_DATA;
             end
             WAIT_DATA: begin
+                state <= FETCH_INSTR;
+            end
+            STORE: begin
                 state <= FETCH_INSTR;
             end
         endcase
@@ -117,25 +124,25 @@ module Processor (
     end
 
 `ifdef BENCH
-    // always @(posedge clk ) begin
-    //     if (state == fetch_instr) begin
-    //         case (1'b1)
-    //         isalureg : $display("alureg rd=x%0d rs1=x%0d rs2=x%0d funct3=%b", rdid, rs1id, rs2id, funct3);
-    //         isaluimm : $display("aluimm rd=x%0d rs1=x%0d imm=0x%0x funct3=%b", rdid, rs1id, iimm, funct3);
-    //         isbranch : $display("branch");
-    //         isjalr   : $display("jalr");
-    //         isjal    : $display("jal");
-    //         isauipc  : $display("aluauipc");
-    //         islui    : $display("lui");
-    //         isload   : $display("load");
-    //         isstore  : $display("store");
-    //         issystem : begin 
-    //             $display("system");
-    //             $finish();
-    //         end
-    //         endcase
-    //     end
-    // end
+    always @(posedge clk ) begin
+        if (state == FETCH_INSTR) begin
+            case (1'b1)
+            // isalureg : $display("alureg rd=x%0d rs1=x%0d rs2=x%0d funct3=%b", rdid, rs1id, rs2id, funct3);
+            // isaluimm : $display("aluimm rd=x%0d rs1=x%0d imm=0x%0x funct3=%b", rdid, rs1id, iimm, funct3);
+            // isbranch : $display("branch");
+            // isjalr   : $display("jalr");
+            // isjal    : $display("jal");
+            // isauipc  : $display("aluauipc");
+            // islui    : $display("lui");
+            // isload   : $display("load");
+            // isstore  : $display("store");
+            isSYSTEM : begin 
+                $display("END");
+                $finish();
+            end
+            endcase
+        end
+    end
 `endif
 
     //////////////////////////////////////////////////////////////
@@ -216,9 +223,9 @@ module Processor (
     end
 
     //////////////////////////////////////////////////////////////
-    // Load
+    // Load/Store
     //////////////////////////////////////////////////////////////
-    wire [31:0] loadstore_addr = rs1 + Iimm;
+    wire [31:0] loadstore_addr = rs1 + (isLoad ? Iimm : Simm);
     wire [15:0] load_halfword = loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
     wire [7:0] load_byte = loadstore_addr[0] ? load_halfword[15:8] : load_halfword[7:0];
     
@@ -231,6 +238,20 @@ module Processor (
         mem_byte_access     ?  {{24{load_sign}}, load_byte} :
         mem_halfword_access ?  {{16{load_sign}}, load_byte} :
                                mem_rdata;
+
+    assign mem_wdata[7:0  ] = rs2[7:0];
+    assign mem_wdata[15:8 ] = loadstore_addr[0] ? rs2[7:0]  : rs2[15:8];
+    assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+    assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  : 
+                              loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+
+    wire [3:0] store_wmask =  
+            mem_byte_access         ?  (
+                loadstore_addr[1]   ? (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+                                      (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+            ) :
+            mem_halfword_access     ? (loadstore_addr[1] ? 4'b1100 : 4'b0011)  :
+                                      4'b1111;
 
     assign debug = RegisterBank[3];
     assign status = (state == FETCH_INSTR || isSYSTEM);
