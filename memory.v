@@ -10,13 +10,14 @@ module Memory (
     reg [31:0] MEM [0:255];
 
 `include "riscv_assembly.v"
-    integer L0_ = 8;
-    integer L1_ = 32;
-    integer F_WAIT_ = 64;
-    integer WAIT_ = 72;
+    integer L0_ = 12;
+    integer L1_ = 36;
+    integer F_WAIT_ = 72;
+    integer WAIT_ = 80;
     integer F_MULT_ = 48;
     integer MULT_ = 56;
     initial begin
+        LI(gp, 32'h400000);
         LI(s0, 0);
         LI(s1, 17);
     Label(L0_);
@@ -28,7 +29,8 @@ module Memory (
         LI(s0, 0);
         LI(s1, 17);
     Label(L1_);
-        LB(gp, s0, 400);
+        LB(t0, s0, 400);
+        SB(t0, gp, 4);
         ADDI(s0, s0, 1);
 
         LI(a0, 18);
@@ -68,6 +70,7 @@ module Memory (
     wire [29:0] word_addr = mem_addr[31:2]; 
     always @(posedge clk) begin
         if (mem_rstrb) begin
+
             mem_rdata <= MEM[word_addr];
         end
         if (mem_wmask[0]) MEM[word_addr][7:0]   <= mem_wdata[7:0];

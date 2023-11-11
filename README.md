@@ -2,6 +2,15 @@
 
 > Following the lessons from [BrunoLevy/learn-fpga](https://github.com/BrunoLevy/learn-fpga/)
 
+## SOC Datasheet
+
+## Memory Map
+
+Address Start | Address End | Description
+--------------|-------------|-------------
+0x00000000    | 0x00000400  | RAM
+0x00400004    | 0x00400007  | GPIO (Outputs)
+
 ## RISCV Instruction Set
 
 > [RISCV Instruction Set Reference Manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)

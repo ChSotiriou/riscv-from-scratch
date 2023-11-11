@@ -135,7 +135,9 @@ module Processor (
             // isauipc  : $display("aluauipc");
             // islui    : $display("lui");
             // isload   : $display("load");
-            // isstore  : $display("store");
+            // isStore  : begin 
+            //     $display("store 0x%0x <= 0x%0x", mem_addr, mem_wdata);
+            // end
             isSYSTEM : begin 
                 $display("END");
                 $finish();
